@@ -2,15 +2,22 @@
 
 import { useCallback, useState } from 'react';
 import { useStore } from '@/lib/store';
+import { useTranslation } from '@/lib/useTranslation';
+import SampleImagePicker from './SampleImagePicker';
 
-export default function ImageUpload() {
+interface ImageUploadProps {
+  onImageSelected?: () => void;
+}
+
+export default function ImageUpload({ onImageSelected }: ImageUploadProps = {}) {
   const [dragActive, setDragActive] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const setUploadedImage = useStore((state) => state.setUploadedImage);
+  const { t } = useTranslation();
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file');
+      alert(t('pleaseUploadImage'));
       return;
     }
 
@@ -20,9 +27,15 @@ export default function ImageUpload() {
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreview(e.target?.result as string);
+      onImageSelected?.();
     };
     reader.readAsDataURL(file);
-  }, [setUploadedImage]);
+  }, [setUploadedImage, onImageSelected]);
+
+  const handleSampleSelect = useCallback((dataUrl: string) => {
+    setPreview(dataUrl);
+    onImageSelected?.();
+  }, [onImageSelected]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -53,75 +66,178 @@ export default function ImageUpload() {
 
   return (
     <div className="w-full">
-      <form
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        className="relative"
+      {/* Main Upload Card */}
+      <div
+        className="card overflow-hidden"
+        style={{
+          padding: 0,
+          background: 'var(--color-card)',
+        }}
       >
-        <input
-          type="file"
-          id="image-upload"
-          accept="image/*"
-          onChange={handleChange}
-          className="hidden"
-        />
-
-        <label
-          htmlFor="image-upload"
-          className={`
-            flex flex-col items-center justify-center
-            w-full h-64 border-2 border-dashed rounded-lg cursor-pointer
-            transition-colors
-            ${dragActive
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
-            }
-          `}
+        <form
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          className="relative"
         >
-          {preview ? (
-            <div className="flex flex-col items-center gap-4">
-              <img
-                src={preview}
-                alt="Upload preview"
-                className="max-h-48 max-w-full object-contain"
-              />
-              <p className="text-sm text-gray-600">Click or drag to change image</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <svg
-                className="w-10 h-10 mb-3 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              <p className="mb-2 text-sm text-gray-500">
-                <span className="font-semibold">Click to upload</span> or drag and drop
-              </p>
-              <p className="text-xs text-gray-500">PNG, JPG, or SVG</p>
-            </div>
-          )}
-        </label>
-      </form>
+          <input
+            type="file"
+            id="image-upload"
+            accept="image/*"
+            onChange={handleChange}
+            className="hidden"
+          />
 
-      <div className="mt-4 text-sm text-gray-600">
-        <p className="font-medium mb-2">Tips for best results:</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Simple images with 2-6 colors work best</li>
-          <li>High contrast designs show up better in knitting</li>
-          <li>Bold shapes are easier to knit than fine details</li>
-          <li>Image will be converted to a pixel grid</li>
-        </ul>
+          <label
+            htmlFor="image-upload"
+            className="upload-area flex flex-col items-center justify-center w-full cursor-pointer transition-all"
+            style={{
+              minHeight: preview ? '100px' : '120px',
+              background: dragActive
+                ? 'linear-gradient(135deg, var(--color-background-secondary) 0%, var(--color-card) 100%)'
+                : 'var(--color-card)',
+              borderBottom: '1px solid var(--color-card-border)',
+            }}
+          >
+            {preview ? (
+              <div className="flex flex-col items-center gap-2 p-4">
+                <div
+                  className="relative group"
+                  style={{
+                    padding: '8px',
+                    background: 'var(--color-background-secondary)',
+                    borderRadius: 'var(--border-radius)',
+                  }}
+                >
+                  <img
+                    src={preview}
+                    alt="Upload preview"
+                    className="max-h-40 max-w-full object-contain"
+                    style={{ borderRadius: '8px' }}
+                  />
+                  <div
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{
+                      background: 'rgba(0,0,0,0.4)',
+                      borderRadius: 'var(--border-radius)',
+                    }}
+                  >
+                    <span className="text-white text-sm font-medium">{t('changeImage')}</span>
+                  </div>
+                </div>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                  {t('clickOrDragReplace')}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center p-3">
+                {/* Upload Icon */}
+                <div
+                  className="upload-icon relative mb-2"
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-xl transition-transform"
+                    style={{
+                      background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
+                      transform: dragActive ? 'scale(1.1)' : 'scale(1)',
+                      boxShadow: '0 4px 12px -4px rgba(0,0,0,0.2)',
+                    }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg
+                      style={{ width: '20px', height: '20px', color: 'white' }}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Text */}
+                <p className="upload-text-main" style={{ fontSize: '14px', fontWeight: 600, marginBottom: '2px', color: 'var(--color-text)' }}>
+                  {t('dropImageHere')}
+                </p>
+                <p className="upload-text-sub" style={{ fontSize: '12px', marginBottom: '8px', color: 'var(--color-text-muted)' }}>
+                  <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+                    {t('browseFiles')}
+                  </span>
+                </p>
+
+                {/* File types */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {['PNG', 'JPG', 'SVG'].map((type) => (
+                    <span
+                      key={type}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '9px',
+                        fontWeight: 600,
+                        borderRadius: '3px',
+                        background: 'var(--color-background-secondary)',
+                        color: 'var(--color-text-muted)',
+                      }}
+                    >
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </label>
+        </form>
+
+        {/* Tips Section - Hidden on mobile */}
+        <div
+          className="tips-section"
+          style={{
+            padding: '10px 12px',
+            background: 'var(--color-background-secondary)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <div
+              style={{
+                flexShrink: 0,
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--color-card)',
+                border: '1px solid var(--color-card-border)',
+              }}
+            >
+              <svg style={{ width: '14px', height: '14px', color: 'var(--color-primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '2px', color: 'var(--color-text)' }}>
+                {t('forBestResults')}
+              </p>
+              <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                {t('imageTips')}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Sample Images */}
+      {!preview && <SampleImagePicker onSelect={handleSampleSelect} />}
     </div>
   );
 }

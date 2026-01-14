@@ -40,7 +40,7 @@ export const YARN_COLORS: YarnColor[] = [
 ];
 
 // Calculate color distance in LAB color space for accurate matching
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
+export function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
     r: parseInt(result[1], 16),
@@ -49,7 +49,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   } : { r: 0, g: 0, b: 0 };
 }
 
-function rgbToLab(r: number, g: number, b: number): { l: number; a: number; b: number } {
+export function rgbToLab(r: number, g: number, b: number): { l: number; a: number; b: number } {
   // Normalize RGB values
   r = r / 255;
   g = g / 255;
@@ -76,7 +76,7 @@ function rgbToLab(r: number, g: number, b: number): { l: number; a: number; b: n
   };
 }
 
-function colorDistance(hex1: string, hex2: string): number {
+export function colorDistance(hex1: string, hex2: string): number {
   const rgb1 = hexToRgb(hex1);
   const rgb2 = hexToRgb(hex2);
 

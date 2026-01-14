@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '@/lib/store';
+import { useTranslation } from '@/lib/useTranslation';
 import ImageUpload from '@/components/ImageUpload';
 import ChartVisualizer, { ChartVisualizerRef } from '@/components/ChartVisualizer';
 import CustomizationPanel from '@/components/CustomizationPanel';
-import GarmentVisualizer from '@/components/GarmentVisualizer';
-import ProjectManager from '@/components/ProjectManager';
+import WelcomeScreen from '@/components/WelcomeScreen';
+import LanguageButton from '@/components/LanguageButton';
 import { downloadPatternPDF } from '@/lib/pdf/patternPDF';
 import { imageFileToChart, imageDataUrlToChart } from '@/lib/image-processing/chartGenerator';
 import { generateBeaniePattern } from '@/lib/pattern-generation/beanieGenerator';
@@ -15,7 +16,6 @@ import { generateSweaterPattern } from '@/lib/pattern-generation/sweaterGenerato
 import { validatePattern } from '@/lib/pattern-generation/patternValidator';
 import { BEANIE_MEASUREMENTS, SCARF_MEASUREMENTS, SWEATER_MEASUREMENTS } from '@/lib/knitting/measurements';
 import { GarmentType, Size, Gauge, CustomMeasurements } from '@/lib/types';
-import { fileToDataUrl } from '@/lib/projectStorage';
 
 export default function Home() {
   const [step, setStep] = useState<'upload' | 'customize' | 'preview'>('upload');
@@ -24,6 +24,8 @@ export default function Home() {
   const chartVisualizerRef = useRef<ChartVisualizerRef>(null);
 
   const {
+    hasSeenWelcome,
+    setHasSeenWelcome,
     uploadedImage,
     imageDataUrl,
     chart,
@@ -35,22 +37,24 @@ export default function Home() {
     pattern,
     setChart,
     setPattern,
-    setImageDataUrl,
+    reset,
+    language,
   } = useStore();
 
-  // Determine if we have an image (either uploaded or from a loaded project)
-  const hasImage = uploadedImage !== null || imageDataUrl !== null;
+  const { t } = useTranslation();
 
-  // Handle project loaded - navigate to appropriate step
-  const handleProjectLoaded = () => {
-    const state = useStore.getState();
-    if (state.pattern) {
-      setStep('preview');
-    } else if (state.chart) {
-      setStep('customize');
-    } else {
-      setStep('upload');
+  // Check localStorage for welcome state on mount
+  useEffect(() => {
+    const seen = localStorage.getItem('hasSeenWelcome') === 'true';
+    if (seen) {
+      setHasSeenWelcome(true);
     }
+  }, [setHasSeenWelcome]);
+
+  // Handle logo click - go back to start
+  const handleLogoClick = () => {
+    reset();
+    setStep('upload');
   };
 
   const getMeasurements = () => {
@@ -72,33 +76,41 @@ export default function Home() {
   const calculateMaxChartDimensions = (): { maxWidth: number; maxHeight: number } => {
     const measurements = getMeasurements();
 
+    // Minimum chart dimensions to preserve pattern detail (but not exceed garment constraints)
+    const MIN_CHART_WIDTH = 40;
+    const MIN_CHART_HEIGHT = 20;
+
+    let maxWidth: number;
+    let maxHeight: number;
+
     if (selectedGarment === 'beanie') {
       const beanieM = measurements as typeof BEANIE_MEASUREMENTS.M;
       const circumferenceInches = beanieM.circumference * 0.9; // 10% negative ease
       const bodyHeight = beanieM.height - beanieM.brimDepth - 2; // Subtract brim and crown
 
-      const maxWidth = Math.floor(circumferenceInches * selectedGauge.stitchesPerInch);
-      const maxHeight = Math.floor(bodyHeight * selectedGauge.rowsPerInch);
-
-      return { maxWidth, maxHeight };
+      maxWidth = Math.floor(circumferenceInches * selectedGauge.stitchesPerInch);
+      maxHeight = Math.floor(bodyHeight * selectedGauge.rowsPerInch);
     } else if (selectedGarment === 'scarf') {
       const scarfM = measurements as typeof SCARF_MEASUREMENTS.standard;
-      const maxWidth = Math.floor((scarfM.width - 1) * selectedGauge.stitchesPerInch);
-      const maxHeight = Math.floor(scarfM.length * selectedGauge.rowsPerInch);
-
-      return { maxWidth, maxHeight };
+      maxWidth = Math.floor((scarfM.width - 1) * selectedGauge.stitchesPerInch);
+      maxHeight = Math.floor(scarfM.length * selectedGauge.rowsPerInch);
     } else {
       const sweaterM = measurements as typeof SWEATER_MEASUREMENTS.M;
-      const maxWidth = Math.floor((sweaterM.chest / 2) * selectedGauge.stitchesPerInch);
-      const maxHeight = Math.floor((sweaterM.length - 2) * selectedGauge.rowsPerInch);
-
-      return { maxWidth, maxHeight };
+      maxWidth = Math.floor((sweaterM.chest / 2) * selectedGauge.stitchesPerInch);
+      maxHeight = Math.floor((sweaterM.length - 2) * selectedGauge.rowsPerInch);
     }
+
+    // For width, use minimum to preserve detail if garment allows
+    // For height, strictly respect the garment constraint (no minimum override)
+    return {
+      maxWidth: Math.max(maxWidth, MIN_CHART_WIDTH),
+      maxHeight: maxHeight
+    };
   };
 
   const handleProcessImage = async () => {
-    if (!hasImage) {
-      setError('Please upload an image first');
+    if (!uploadedImage && !imageDataUrl) {
+      setError(t('uploadImageFirst'));
       return;
     }
 
@@ -110,17 +122,12 @@ export default function Home() {
       const { maxWidth, maxHeight } = calculateMaxChartDimensions();
 
       // Use conservative target width (smaller than max to ensure it fits)
-      let targetWidth = Math.floor(maxWidth * 0.8);
+      const targetWidth = Math.floor(maxWidth * 0.8);
 
       let generatedChart;
-
       if (uploadedImage) {
-        // Convert and store as data URL for saving
-        const dataUrl = await fileToDataUrl(uploadedImage);
-        setImageDataUrl(dataUrl);
         generatedChart = await imageFileToChart(uploadedImage, targetWidth, 6, maxHeight);
       } else if (imageDataUrl) {
-        // Process from data URL (loaded project)
         generatedChart = await imageDataUrlToChart(imageDataUrl, targetWidth, 6, maxHeight);
       }
 
@@ -129,7 +136,7 @@ export default function Home() {
         setStep('customize');
       }
     } catch (err) {
-      setError('Failed to process image. Please try a different image.');
+      setError(t('failedToProcess'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -138,7 +145,7 @@ export default function Home() {
 
   const handleGeneratePattern = () => {
     if (!chart) {
-      setError('No chart available');
+      setError(t('noChartAvailable'));
       return;
     }
 
@@ -176,7 +183,7 @@ export default function Home() {
       const validation = validatePattern(generatedPattern);
 
       if (!validation.isValid) {
-        setError(`Pattern validation failed: ${validation.errors.join(', ')}`);
+        setError(`${t('patternValidationFailed')}: ${validation.errors.join(', ')}`);
         console.error('Pattern validation errors:', validation.errors);
         return;
       }
@@ -189,7 +196,7 @@ export default function Home() {
       setPattern(generatedPattern);
       setStep('preview');
     } catch (err) {
-      setError('Failed to generate pattern');
+      setError(t('failedToGeneratePattern'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -198,7 +205,7 @@ export default function Home() {
 
   const handleDownloadPDF = async () => {
     if (!pattern) {
-      setError('No pattern available');
+      setError(t('noPatternAvailable'));
       return;
     }
 
@@ -207,92 +214,157 @@ export default function Home() {
 
     try {
       const canvas = chartVisualizerRef.current?.getCanvas();
-      await downloadPatternPDF(pattern, canvas || undefined);
+      await downloadPatternPDF(pattern, canvas || undefined, language);
     } catch (err) {
-      setError('Failed to generate PDF');
+      setError(t('failedToGeneratePDF'));
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownloadText = () => {
-    if (!pattern) {
-      setError('No pattern available');
-      return;
-    }
-
-    const text = formatPatternAsText(pattern);
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${pattern.garmentType}-pattern-${pattern.size}-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  // Show welcome screen for new users
+  if (!hasSeenWelcome) {
+    return <WelcomeScreen onGetStarted={() => setHasSeenWelcome(true)} />;
+  }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Knitting Pattern Generator
-          </h1>
-          <p className="text-lg text-gray-600">
-            Turn any image into a custom knitting pattern
-          </p>
-        </div>
-
-        {/* Project Manager */}
-        <div className="max-w-4xl mx-auto mb-6">
-          <ProjectManager onProjectLoaded={handleProjectLoaded} />
-        </div>
-
-        {/* Progress Steps */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-4">
-            <StepIndicator number={1} label="Upload" active={step === 'upload'} />
-            <div className="w-12 h-0.5 bg-gray-300" />
-            <StepIndicator number={2} label="Customize" active={step === 'customize'} />
-            <div className="w-12 h-0.5 bg-gray-300" />
-            <StepIndicator number={3} label="Preview" active={step === 'preview'} />
+    <main className="min-h-screen" style={{ background: 'var(--color-background)' }}>
+      <div className="app-container">
+        {/* Top Bar with Logo */}
+        <div
+          className="top-bar"
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 20,
+            padding: '10px 16px',
+            background: 'var(--color-card)',
+            borderBottom: '1px solid var(--color-card-border)',
+          }}
+        >
+          <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              onClick={handleLogoClick}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 0',
+              }}
+            >
+              <svg
+                width="28"
+                height="28"
+                viewBox="0 0 32 32"
+                fill="none"
+                style={{ color: 'var(--color-primary)' }}
+              >
+                <circle cx="16" cy="16" r="14" stroke="currentColor" strokeWidth="2.5" fill="none" />
+                <path
+                  d="M10 12C10 12 12 20 16 20C20 20 22 12 22 12"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+                <circle cx="10" cy="12" r="2" fill="currentColor" />
+                <circle cx="22" cy="12" r="2" fill="currentColor" />
+              </svg>
+              <span
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  color: 'var(--color-text)',
+                }}
+              >
+                {t('appName')}
+              </span>
+            </button>
+            <LanguageButton />
           </div>
         </div>
 
+        <div className="main-content" style={{ maxWidth: step === 'customize' ? '1000px' : '600px', margin: '0 auto', padding: '16px 12px' }}>
+          {/* Header with Stepper */}
+          <header className="header-section" style={{ textAlign: 'center', marginBottom: '12px' }}>
+            <h1
+              className="app-title"
+              style={{
+                fontSize: '26px',
+                fontWeight: 700,
+                marginBottom: '4px',
+                color: 'var(--color-text)',
+                fontFamily: 'var(--font-heading)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {t('patternGenerator')}
+            </h1>
+            <p className="app-subtitle" style={{ fontSize: '12px', marginBottom: '10px', color: 'var(--color-text-secondary)' }}>
+              {t('tagline')}
+            </p>
+
+            {/* Compact Inline Stepper */}
+            <div
+              className="stepper-container"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 16px',
+                background: 'var(--color-card)',
+                borderRadius: '999px',
+                border: '1px solid var(--color-card-border)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              }}
+            >
+              <StepIndicator number={1} label={t('stepUpload')} active={step === 'upload'} completed={step !== 'upload'} />
+              <div
+                className="stepper-line"
+                style={{
+                  width: '20px',
+                  height: '2px',
+                  background: step !== 'upload' ? 'var(--color-primary)' : 'var(--color-card-border)',
+                  borderRadius: '1px',
+                }}
+              />
+              <StepIndicator number={2} label={t('stepCustomize')} active={step === 'customize'} completed={step === 'preview'} />
+              <div
+                className="stepper-line"
+                style={{
+                  width: '20px',
+                  height: '2px',
+                  background: step === 'preview' ? 'var(--color-primary)' : 'var(--color-card-border)',
+                  borderRadius: '1px',
+                }}
+              />
+              <StepIndicator number={3} label={t('stepPreview')} active={step === 'preview'} completed={false} />
+            </div>
+          </header>
+
         {/* Error Display */}
         {error && (
-          <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="max-w-2xl mx-auto mb-6 error-message">
             {error}
           </div>
         )}
 
         {/* Step 1: Upload */}
         {step === 'upload' && (
-          <div className="max-w-2xl mx-auto">
+          <div className="upload-step-container max-w-2xl mx-auto">
             <ImageUpload />
-            {/* Show preview for loaded project with imageDataUrl */}
-            {!uploadedImage && imageDataUrl && (
-              <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600 mb-2">Loaded image from project:</p>
-                <img
-                  src={imageDataUrl}
-                  alt="Loaded from project"
-                  className="max-h-48 mx-auto rounded"
-                />
-              </div>
-            )}
-            {hasImage && (
-              <div className="mt-6 text-center">
+            {(uploadedImage || imageDataUrl) && (
+              <div className="mt-4 text-center">
                 <button
                   onClick={handleProcessImage}
                   disabled={loading}
-                  className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="btn-primary px-6 py-2"
                 >
-                  {loading ? 'Processing...' : 'Process Image →'}
+                  {loading ? t('processing') : t('processImage')}
                 </button>
               </div>
             )}
@@ -301,27 +373,60 @@ export default function Home() {
 
         {/* Step 2: Customize */}
         {step === 'customize' && chart && (
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
-            <div>
-              <h2 className="text-2xl font-semibold mb-4">Your Chart</h2>
-              <ChartVisualizer chart={chart} />
-            </div>
-            <div>
-              <CustomizationPanel />
-              <div className="mt-6 flex gap-4">
-                <button
-                  onClick={() => setStep('upload')}
-                  className="px-6 py-3 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  ← Back
-                </button>
-                <button
-                  onClick={handleGeneratePattern}
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {loading ? 'Generating...' : 'Generate Pattern →'}
-                </button>
+          <div>
+            {/* Mobile: Stack vertically, Desktop: Side by side */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+              gap: '24px',
+              alignItems: 'start',
+            }}>
+              {/* Chart Section */}
+              <div>
+                <ChartVisualizer chart={chart} />
+              </div>
+
+              {/* Customization Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <CustomizationPanel />
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => setStep('upload')}
+                    style={{
+                      padding: '14px 20px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--color-card-border)',
+                      backgroundColor: 'var(--color-card)',
+                      color: 'var(--color-text)',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {t('back')}
+                  </button>
+                  <button
+                    onClick={handleGeneratePattern}
+                    disabled={loading}
+                    style={{
+                      flex: 1,
+                      padding: '14px 20px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
+                      color: 'white',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.6 : 1,
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 2px 8px rgba(146, 64, 14, 0.25)',
+                    }}
+                  >
+                    {loading ? t('generating') : t('generatePattern')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -329,52 +434,151 @@ export default function Home() {
 
         {/* Step 3: Preview */}
         {step === 'preview' && pattern && (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl font-semibold mb-6">Your Pattern</h2>
+          <div style={{ maxWidth: '500px', margin: '0 auto' }}>
+            {/* Success Card */}
+            <div
+              className="card"
+              style={{
+                textAlign: 'center',
+                marginBottom: '16px',
+                padding: '32px 24px',
+              }}
+            >
+              {/* Checkmark */}
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                  <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
 
-            {/* Garment Visualizer */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-              <GarmentVisualizer pattern={pattern} />
+              <h2
+                style={{
+                  fontSize: '24px',
+                  fontWeight: 600,
+                  color: 'var(--color-text)',
+                  fontFamily: 'var(--font-heading)',
+                  marginBottom: '4px',
+                }}
+              >
+                {t('patternReady')}
+              </h2>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '14px', margin: 0 }}>
+                {pattern.garmentType === 'beanie' ? t('beanie') : pattern.garmentType === 'scarf' ? t('scarf') : t('sweater')} · {t('size')} {pattern.size} · {pattern.gauge.yarnWeight.charAt(0).toUpperCase() + pattern.gauge.yarnWeight.slice(1)}
+              </p>
             </div>
 
-            {/* Chart Visualization */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-              <h3 className="text-xl font-semibold mb-4">Chart Visualization</h3>
+            {/* Chart Preview */}
+            <div style={{ marginBottom: '16px' }}>
               <ChartVisualizer ref={chartVisualizerRef} chart={pattern.chart} />
             </div>
 
-            {/* Full Pattern Text Display */}
-            <div className="bg-white rounded-lg border border-gray-200 p-8 mb-6">
-              <h3 className="text-xl font-semibold mb-4">Complete Pattern Instructions</h3>
-              <pre className="font-mono text-sm whitespace-pre-wrap leading-relaxed">
-                {formatPatternAsText(pattern)}
-              </pre>
+            {/* Quick Stats */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '8px',
+                marginBottom: '16px',
+              }}
+            >
+              <div
+                className="card"
+                style={{
+                  padding: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-primary)' }}>
+                  {pattern.chart.colorMap.length}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{t('colors')}</div>
+              </div>
+              <div
+                className="card"
+                style={{
+                  padding: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-primary)' }}>
+                  ~{pattern.materials.yardage.totalYards}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{t('yards')}</div>
+              </div>
+              <div
+                className="card"
+                style={{
+                  padding: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-primary)' }}>
+                  {pattern.materials.yardage.colorBreakdown.reduce((acc, item) => acc + item.skeins, 0)}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{t('skeins')}</div>
+              </div>
             </div>
 
-            <div className="flex gap-4">
-              <button
-                onClick={() => setStep('customize')}
-                className="px-6 py-3 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                ← Edit Pattern
-              </button>
-              <button
-                onClick={handleDownloadText}
-                disabled={loading}
-                className="px-6 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Download as Text
-              </button>
-              <button
-                onClick={handleDownloadPDF}
-                disabled={loading}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? 'Generating PDF...' : 'Download as PDF'}
-              </button>
-            </div>
+            {/* Download Button */}
+            <button
+              onClick={handleDownloadPDF}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '16px',
+                borderRadius: '12px',
+                border: 'none',
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginBottom: '12px',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {loading ? t('generating') : t('downloadPDF')}
+            </button>
+
+            {/* Back Button */}
+            <button
+              onClick={() => setStep('customize')}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '10px',
+                border: '1px solid var(--color-card-border)',
+                background: 'transparent',
+                color: 'var(--color-text-muted)',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              {t('backToSettings')}
+            </button>
           </div>
         )}
+
+        </div>
       </div>
     </main>
   );
@@ -384,71 +588,49 @@ function StepIndicator({
   number,
   label,
   active,
+  completed,
 }: {
   number: number;
   label: string;
   active: boolean;
+  completed: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center">
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
       <div
-        className={`
-        w-10 h-10 rounded-full flex items-center justify-center font-semibold
-        ${active ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}
-      `}
+        style={{
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '10px',
+          fontWeight: 700,
+          background: active
+            ? 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)'
+            : completed
+            ? 'var(--color-primary)'
+            : 'var(--color-background-secondary)',
+          color: active || completed ? 'var(--color-button-text)' : 'var(--color-text-muted)',
+          border: !active && !completed ? '1.5px solid var(--color-card-border)' : 'none',
+          boxShadow: active ? '0 2px 6px rgba(0,0,0,0.12)' : 'none',
+          transition: 'all 0.2s',
+        }}
       >
-        {number}
+        {completed && !active ? '✓' : number}
       </div>
-      <span className="text-sm mt-1">{label}</span>
+      <span
+        className="step-label"
+        style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: active ? 'var(--color-primary)' : completed ? 'var(--color-text)' : 'var(--color-text-muted)',
+        }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
 
-function formatPatternAsText(pattern: any): string {
-  let text = `${pattern.garmentType.toUpperCase()} KNITTING PATTERN\n`;
-  text += `Size: ${pattern.size}\n`;
-  text += `Generated: ${new Date().toLocaleDateString()}\n\n`;
-
-  text += `MATERIALS\n`;
-  text += `Yarn Required (ESTIMATE - buy extra to be safe):\n`;
-  pattern.materials.yardage.colorBreakdown.forEach((item: any) => {
-    text += `  - ${item.color.name}: ~${item.yards} yards\n`;
-  });
-  text += `Estimated Total: ~${pattern.materials.yardage.totalYards} yards\n`;
-  text += `\n`;
-  text += `Suggested Skeins (220 yards each):\n`;
-  pattern.materials.yardage.colorBreakdown.forEach((item: any) => {
-    text += `  - ${item.color.name}: ${item.skeins} skein${item.skeins > 1 ? 's' : ''}\n`;
-  });
-  text += `Note: Actual yardage varies by tension and yarn. When in doubt, buy an extra skein.\n`;
-  text += `\n`;
-  text += `Needles: ${pattern.materials.needles}\n`;
-  text += `Notions: ${pattern.materials.notions.join(', ')}\n\n`;
-
-  text += `GAUGE\n`;
-  text += `${pattern.gauge.stitchesPerInch} stitches × ${pattern.gauge.rowsPerInch} rows per inch in stockinette stitch\n\n`;
-
-  text += `ABBREVIATIONS\n`;
-  Object.entries(pattern.instructions.abbreviations).forEach(([abbr, full]) => {
-    text += `${abbr} = ${full}\n`;
-  });
-  text += `\n`;
-
-  text += `INSTRUCTIONS\n\n`;
-  pattern.instructions.sections.forEach((section: any) => {
-    text += `${section.title.toUpperCase()}\n`;
-    section.steps.forEach((step: string, idx: number) => {
-      text += `${idx + 1}. ${step}\n`;
-    });
-    text += `\n`;
-  });
-
-  text += `CHART\n`;
-  text += `Chart is ${pattern.chart.width} stitches wide × ${pattern.chart.height} rows tall\n`;
-  text += `See attached chart visualization for colorwork pattern.\n\n`;
-
-  text += `This pattern was generated by the Knitting Pattern Generator.\n`;
-  text += `Please knit a gauge swatch and adjust needle size if necessary.\n`;
-
-  return text;
-}

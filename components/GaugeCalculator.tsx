@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useStore } from '@/lib/store';
+import { useTranslation } from '@/lib/useTranslation';
 import { CustomGauge, Gauge } from '@/lib/types';
 import { STANDARD_GAUGES } from '@/lib/knitting/measurements';
 
@@ -12,6 +13,8 @@ export default function GaugeCalculator() {
     setSelectedGauge,
     setCustomGauge,
   } = useStore();
+
+  const { t } = useTranslation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [swatchStitches, setSwatchStitches] = useState(customGauge?.swatchStitches?.toString() || '');
@@ -75,25 +78,41 @@ export default function GaugeCalculator() {
   return (
     <div className="space-y-3">
       {/* Current Gauge Display */}
-      <div className={`p-4 rounded-lg ${isUsingCustomGauge ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
+      <div
+        className="p-4"
+        style={{
+          backgroundColor: isUsingCustomGauge ? 'rgba(5, 150, 105, 0.1)' : 'var(--color-background-secondary)',
+          border: isUsingCustomGauge ? '1px solid var(--color-success)' : '1px solid var(--color-card-border)',
+          borderRadius: 'var(--border-radius)',
+        }}
+      >
         <div className="flex items-center justify-between mb-2">
-          <h4 className="font-medium text-sm">
-            {isUsingCustomGauge ? 'Your Gauge (from swatch)' : 'Standard Gauge'}
+          <h4
+            className="font-medium text-sm"
+            style={{ color: 'var(--color-text)' }}
+          >
+            {isUsingCustomGauge ? t('yourGauge') : t('standardGauge')}
           </h4>
           {isUsingCustomGauge && (
-            <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">Custom</span>
+            <span
+              className="text-xs text-white px-2 py-0.5 rounded"
+              style={{ backgroundColor: 'var(--color-success)' }}
+            >
+              {t('custom')}
+            </span>
           )}
         </div>
-        <div className="text-sm text-gray-600 space-y-1">
-          <p>{selectedGauge.stitchesPerInch} stitches per inch</p>
-          <p>{selectedGauge.rowsPerInch} rows per inch</p>
+        <div className="text-sm space-y-1" style={{ color: 'var(--color-text-secondary)' }}>
+          <p>{selectedGauge.stitchesPerInch} {t('stitchesPerInch')}</p>
+          <p>{selectedGauge.rowsPerInch} {t('rowsPerInch')}</p>
         </div>
         {isUsingCustomGauge && (
           <button
             onClick={handleClearCustomGauge}
-            className="text-xs text-red-600 hover:text-red-700 mt-2"
+            className="text-xs mt-2"
+            style={{ color: 'var(--color-error)' }}
           >
-            Reset to standard gauge
+            {t('resetToStandard')}
           </button>
         )}
       </div>
@@ -101,13 +120,19 @@ export default function GaugeCalculator() {
       {/* Toggle Calculator */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-between"
+        className="w-full px-4 py-2 text-sm flex items-center justify-between"
+        style={{
+          backgroundColor: 'var(--color-card)',
+          border: '1px solid var(--color-card-border)',
+          borderRadius: 'var(--border-radius)',
+          color: 'var(--color-text)',
+        }}
       >
         <span className="flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" style={{ color: 'var(--color-accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
-          Calculate from Swatch
+{t('calculateFromSwatch')}
         </span>
         <svg
           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -121,21 +146,30 @@ export default function GaugeCalculator() {
 
       {/* Calculator Panel */}
       {isOpen && (
-        <div className="p-4 border border-gray-200 rounded-lg bg-white space-y-4">
-          <div className="text-sm text-gray-600">
-            <p className="font-medium mb-1">How to measure your swatch:</p>
+        <div
+          className="p-4 space-y-4"
+          style={{
+            backgroundColor: 'var(--color-card)',
+            border: '1px solid var(--color-card-border)',
+            borderRadius: 'var(--border-radius)',
+          }}
+        >
+          <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            <p className="font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+              {t('howToMeasure')}
+            </p>
             <ol className="list-decimal list-inside space-y-1 text-xs">
-              <li>Knit a swatch at least 5" x 5" in stockinette</li>
-              <li>Lay it flat without stretching</li>
-              <li>Count stitches and rows in a measured section</li>
-              <li>Enter your measurements below</li>
+              <li>{t('swatchInstr1')}</li>
+              <li>{t('swatchInstr2')}</li>
+              <li>{t('swatchInstr3')}</li>
+              <li>{t('swatchInstr4')}</li>
             </ol>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Stitches counted
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('stitchesCounted')}
               </label>
               <input
                 type="number"
@@ -144,12 +178,12 @@ export default function GaugeCalculator() {
                 value={swatchStitches}
                 onChange={(e) => setSwatchStitches(e.target.value)}
                 placeholder="e.g., 20"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Over width (inches)
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('overWidth')}
               </label>
               <input
                 type="number"
@@ -158,12 +192,12 @@ export default function GaugeCalculator() {
                 value={swatchWidth}
                 onChange={(e) => setSwatchWidth(e.target.value)}
                 placeholder="e.g., 4"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Rows counted
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('rowsCounted')}
               </label>
               <input
                 type="number"
@@ -172,12 +206,12 @@ export default function GaugeCalculator() {
                 value={swatchRows}
                 onChange={(e) => setSwatchRows(e.target.value)}
                 placeholder="e.g., 28"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full text-sm"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Over height (inches)
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+                {t('overHeight')}
               </label>
               <input
                 type="number"
@@ -186,16 +220,25 @@ export default function GaugeCalculator() {
                 value={swatchHeight}
                 onChange={(e) => setSwatchHeight(e.target.value)}
                 placeholder="e.g., 4"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className="w-full text-sm"
               />
             </div>
           </div>
 
           {/* Preview */}
           {calculated && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm font-medium text-blue-900 mb-1">Your calculated gauge:</p>
-              <p className="text-sm text-blue-800">
+            <div
+              className="p-3"
+              style={{
+                backgroundColor: 'var(--color-background-secondary)',
+                borderRadius: 'var(--border-radius)',
+                border: '1px solid var(--color-primary)',
+              }}
+            >
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-primary)' }}>
+              {t('calculatedGauge')}
+              </p>
+              <p className="text-sm" style={{ color: 'var(--color-text)' }}>
                 {Math.round(calculated.stitchesPerInch * 10) / 10} sts/inch × {Math.round(calculated.rowsPerInch * 10) / 10} rows/inch
               </p>
             </div>
@@ -204,9 +247,9 @@ export default function GaugeCalculator() {
           <button
             onClick={handleApplyGauge}
             disabled={!hasValidInput}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="btn-primary w-full text-sm"
           >
-            Apply My Gauge
+            {t('applyMyGauge')}
           </button>
         </div>
       )}

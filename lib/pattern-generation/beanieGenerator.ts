@@ -96,11 +96,11 @@ export function generateBeaniePattern(
         title: 'Body',
         steps: [
           `Switch to stockinette stitch (knit all stitches every round).`,
-          `Color designation: MC (Main Color) = ${mainColor.name}, CC (Contrast Colors) = ${contrastColors.map(c => c.name).join(', ')}.`,
+          `Color designation: MC (Main Color) = ${mainColor.name}, CC (Contrast Colors) = ${[...new Set(contrastColors.map(c => c.name))].join(', ')}.`,
           ...(bodyRowsBeforeChart > 0 ? [`Work ${bodyRowsBeforeChart} rounds in MC before starting chart.`] : []),
           `Begin chart on the first round after ${bodyRowsBeforeChart > 0 ? 'the MC rounds' : 'ribbing'}.`,
           `Chart placement (centered): K${stitchesBeforeChart} in MC, work chart over next ${chart.width} sts, K${stitchesAfterChart} in MC.`,
-          `Chart uses MC (${mainColor.name}) for background with motifs in ${contrastColors.map(c => c.name).join(', ')}. Chart is ${chart.width} sts × ${chart.height} rows.`,
+          `Chart uses MC (${mainColor.name}) for background with motifs in ${[...new Set(contrastColors.map(c => c.name))].join(', ')}. Chart is ${chart.width} sts × ${chart.height} rows.`,
           `Work chart in stranded colorwork (Fair Isle):`,
           `  - Carry unused colors loosely across back (floats no longer than 3-4 stitches).`,
           `  - Maintain consistent color dominance (background color above, pattern color below).`,
@@ -140,13 +140,20 @@ export function generateBeaniePattern(
     notions: ['Stitch marker', 'Tapestry needle'],
   };
 
+  // Store finished measurements (with negative ease applied)
+  const finishedMeasurements = {
+    circumference: Math.round(easedCircumference * 10) / 10, // Actual finished circumference
+    height: measurements.height,
+    brimDepth: measurements.brimDepth,
+  };
+
   return {
     id: `beanie-${size}-${Date.now()}`,
     garmentType: 'beanie',
     size,
     gauge,
     materials,
-    measurements: { beanie: measurements },
+    measurements: { beanie: finishedMeasurements },
     instructions,
     chart,
     createdAt: new Date(),

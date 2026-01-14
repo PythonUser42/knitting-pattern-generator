@@ -140,11 +140,18 @@ export default function CustomSizing() {
     <div className="space-y-3">
       {/* Gate: Require gauge first */}
       {!hasGauge && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-sm text-amber-800">
+        <div
+          className="p-3"
+          style={{
+            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+            border: '1px solid var(--color-accent)',
+            borderRadius: 'var(--border-radius)',
+          }}
+        >
+          <p className="text-sm" style={{ color: 'var(--color-accent)' }}>
             <strong>Custom sizing requires gauge input.</strong>
           </p>
-          <p className="text-xs text-amber-700 mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
             Please enter your swatch measurements above to enable custom sizing.
           </p>
         </div>
@@ -154,18 +161,25 @@ export default function CustomSizing() {
       <button
         onClick={handleToggle}
         disabled={!hasGauge}
-        className={`w-full px-4 py-2 text-sm border rounded-lg flex items-center justify-between ${
-          hasGauge
-            ? 'border-gray-300 hover:bg-gray-50'
-            : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
-        } ${isOpen && useCustomMeasurements ? 'border-purple-500 bg-purple-50' : ''}`}
+        className={`w-full px-4 py-2 text-sm flex items-center justify-between ${!hasGauge ? 'opacity-60 cursor-not-allowed' : ''}`}
+        style={{
+          backgroundColor: isOpen && useCustomMeasurements ? 'var(--color-background-secondary)' : 'var(--color-card)',
+          border: isOpen && useCustomMeasurements ? '1px solid var(--color-primary)' : '1px solid var(--color-card-border)',
+          borderRadius: 'var(--border-radius)',
+          color: 'var(--color-text)',
+        }}
       >
         <span className="flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" style={{ color: 'var(--color-accent)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
           </svg>
-          Custom Sizing
-          <span className="text-xs bg-purple-600 text-white px-1.5 py-0.5 rounded">Advanced</span>
+Custom Sizing
+          <span
+            className="text-xs text-white px-1.5 py-0.5 rounded"
+            style={{ backgroundColor: 'var(--color-accent)' }}
+          >
+            Advanced
+          </span>
         </span>
         <svg
           className={`w-4 h-4 transition-transform ${isOpen && useCustomMeasurements ? 'rotate-180' : ''}`}
@@ -179,9 +193,24 @@ export default function CustomSizing() {
 
       {/* Custom Sizing Panel */}
       {isOpen && useCustomMeasurements && (
-        <div className="p-4 border border-purple-200 rounded-lg bg-white space-y-4">
+        <div
+          className="p-4 space-y-4"
+          style={{
+            backgroundColor: 'var(--color-card)',
+            border: '1px solid var(--color-primary)',
+            borderRadius: 'var(--border-radius)',
+          }}
+        >
           {/* Warning */}
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+          <div
+            className="p-3 text-xs"
+            style={{
+              backgroundColor: 'rgba(217, 119, 6, 0.1)',
+              border: '1px solid var(--color-accent)',
+              borderRadius: 'var(--border-radius)',
+              color: 'var(--color-accent)',
+            }}
+          >
             <strong>Note:</strong> Custom sizing increases the chance of fit issues.
             Always knit a gauge swatch and measure carefully.
           </div>
@@ -319,7 +348,15 @@ export default function CustomSizing() {
 
           {/* Error Summary */}
           {hasErrors && (
-            <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+            <div
+              className="p-2 text-xs"
+              style={{
+                backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                border: '1px solid var(--color-error)',
+                borderRadius: 'var(--border-radius)',
+                color: 'var(--color-error)',
+              }}
+            >
               Please fix the errors above before generating your pattern.
             </div>
           )}
@@ -327,7 +364,7 @@ export default function CustomSizing() {
           {/* Reset Button */}
           <button
             onClick={handleReset}
-            className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50"
+            className="w-full px-3 py-1.5 text-xs btn-secondary"
           >
             Reset to Standard Size ({selectedSize})
           </button>
@@ -361,8 +398,12 @@ function MeasurementInput({
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <label className="block text-xs font-medium text-gray-700">{label}</label>
-        <span className="text-xs text-gray-400">{min}" - {max}"</span>
+        <label className="block text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>
+          {label}
+        </label>
+        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+          {min}" - {max}"
+        </span>
       </div>
       <div className="relative">
         <input
@@ -372,17 +413,24 @@ function MeasurementInput({
           max={max}
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm pr-8 ${
-            error ? 'border-red-300 bg-red-50' : 'border-gray-300'
-          }`}
+          className="w-full text-sm pr-8"
+          style={{
+            borderColor: error ? 'var(--color-error)' : undefined,
+            backgroundColor: error ? 'rgba(225, 29, 72, 0.05)' : undefined,
+          }}
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">in</span>
+        <span
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
+          in
+        </span>
       </div>
       {!compact && hint && !error && (
-        <p className="text-xs text-gray-500 mt-1">{hint}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>{hint}</p>
       )}
       {error && (
-        <p className="text-xs text-red-600 mt-1">{error}</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>{error}</p>
       )}
     </div>
   );
