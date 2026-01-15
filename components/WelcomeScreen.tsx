@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useStore } from '@/lib/store';
 import { useTranslation } from '@/lib/useTranslation';
 import LanguageButton from './LanguageButton';
@@ -10,7 +11,7 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
   const setHasSeenWelcome = useStore((state) => state.setHasSeenWelcome);
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const handleGetStarted = () => {
     setHasSeenWelcome(true);
@@ -19,131 +20,301 @@ export default function WelcomeScreen({ onGetStarted }: WelcomeScreenProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-6 relative"
-      style={{ background: 'var(--color-background)' }}
+      className="relative"
+      style={{
+        background: 'var(--color-background)',
+        minHeight: '100dvh',
+        overflowY: 'auto',
+      }}
     >
       {/* Language Button in top right */}
-      <div style={{ position: 'absolute', top: '16px', right: '16px' }}>
+      <div style={{ position: 'fixed', top: '12px', right: '12px', zIndex: 10 }}>
         <LanguageButton />
       </div>
 
-      <div className="max-w-2xl w-full text-center">
-        {/* Hero Section */}
-        <div style={{ marginBottom: '32px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '80px',
-              height: '80px',
-              marginBottom: '24px',
-              background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
-              borderRadius: '1.5rem',
-              boxShadow: 'var(--shadow-hover)',
-            }}
-          >
-            <svg
-              style={{ width: '40px', height: '40px', color: 'white' }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
+      {/* Hero Image Section - shorter on mobile */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: 'clamp(150px, 25vh, 220px)',
+          overflow: 'hidden',
+        }}
+      >
+        <Image
+          src="/hero-knitting-flatlay.png"
+          alt="Cozy knitting supplies with colorwork pattern"
+          fill
+          style={{
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
+          priority
+        />
+        {/* Gradient overlay */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: '80px',
+            background: 'linear-gradient(to top, var(--color-background) 0%, transparent 100%)',
+          }}
+        />
+      </div>
+
+      {/* Content Section */}
+      <div className="flex flex-col items-center px-4 md:px-6 pb-8 -mt-4 sm:-mt-10 relative z-10">
+        <div className="w-full max-w-4xl text-center">
+          {/* Title - smaller on mobile */}
           <h1
-            className="text-4xl md:text-5xl font-bold mb-4"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2"
             style={{
               color: 'var(--color-text)',
               fontFamily: 'var(--font-heading)',
+              textShadow: '0 2px 8px rgba(255, 255, 255, 0.9), 0 0 20px rgba(255, 255, 255, 0.8)',
             }}
           >
             {t('welcomeTitle')}
           </h1>
+
+          {/* Subtitle */}
           <p
-            className="text-xl"
-            style={{ color: 'var(--color-text-secondary)' }}
+            className="text-base sm:text-lg md:text-xl"
+            style={{ color: 'var(--color-primary)', fontWeight: 500, marginBottom: '16px' }}
           >
             {t('welcomeSubtitle')}
           </p>
-        </div>
 
-        {/* Steps */}
-        <div
-          className="grid md:grid-cols-3 gap-6"
-          style={{ marginBottom: '40px' }}
-        >
-          <StepCard
-            number={1}
-            title={t('stepUpload')}
-            description={t('step1Desc')}
-            icon={
-              <svg style={{ width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-              </svg>
-            }
-          />
-          <StepCard
-            number={2}
-            title={t('stepCustomize')}
-            description={t('step2Desc')}
-            icon={
-              <svg style={{ width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-            }
-          />
-          <StepCard
-            number={3}
-            title={t('step3Title')}
-            description={t('step3Desc')}
-            icon={
-              <svg style={{ width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-          />
-        </div>
-
-        {/* Preview Images */}
-        <div className="mb-10">
-          <p
-            className="text-sm mb-4"
-            style={{ color: 'var(--color-text-muted)' }}
+          {/* All cards in one grid for consistent spacing */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-3"
+            style={{ gap: '16px', maxWidth: '700px', width: '100%', margin: '0 auto' }}
           >
-            {t('worksGreatFor')}
+            {/* Before/After Transformation - spans all columns on desktop */}
+            <div
+              className="card sm:col-span-3"
+              style={{ padding: '10px 12px' }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  gap: '10px',
+                }}
+              >
+                {/* Before - Original Image */}
+                <div style={{ textAlign: 'center' }}>
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      border: '2px solid var(--color-card-border)',
+                      background: '#fff',
+                    }}
+                  >
+                    <img
+                      src="/samples/bunny.png"
+                      alt="Original image"
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
+                  <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                    {language === 'de' ? 'Dein Bild' : 'Your image'}
+                  </p>
+                </div>
+
+                {/* Arrow */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '20px' }}>
+                  <svg width="32" height="20" viewBox="0 0 40 24" fill="none">
+                    <path
+                      d="M2 12H34M34 12L26 4M34 12L26 20"
+                      stroke="var(--color-primary)"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span style={{ fontSize: '9px', color: 'var(--color-accent)', fontWeight: 600, marginTop: '4px' }}>
+                    {language === 'de' ? 'Magie' : 'Magic'}
+                  </span>
+                </div>
+
+                {/* After - Knitting Chart */}
+                <div style={{ textAlign: 'center' }}>
+                  <div
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <img
+                      src="/samples/bunny-pattern.png"
+                      alt="Generated knitting pattern"
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
+                  <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                    {language === 'de' ? 'Strickmuster' : 'Knit pattern'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Step cards - same grid, same gap */}
+            <StepCard
+              number={1}
+              title={t('stepUpload')}
+              description={t('step1Desc')}
+            />
+            <StepCard
+              number={2}
+              title={t('stepCustomize')}
+              description={t('step2Desc')}
+            />
+            <StepCard
+              number={3}
+              title={t('step3Title')}
+              description={t('step3Desc')}
+            />
+          </div>
+
+          {/* Social Proof / Testimonials */}
+          <div
+            className="mx-auto"
+            style={{ maxWidth: '600px', marginTop: '16px', marginBottom: '16px' }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                gap: '16px',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <TestimonialChip
+                text={language === 'de' ? '"So einfach!" - Maria' : '"So easy to use!" - Sarah'}
+                stars={5}
+              />
+              <TestimonialChip
+                text={language === 'de' ? '"Meine Mütze ist perfekt geworden"' : '"My beanie turned out perfect"'}
+                stars={5}
+              />
+              <TestimonialChip
+                text={language === 'de' ? '"Tolles Tool für Anfänger"' : '"Great tool for beginners"'}
+                stars={4}
+              />
+            </div>
+          </div>
+
+          {/* Garment Icons - smaller */}
+          <div style={{ marginBottom: '16px' }}>
+            <p
+              className="text-xs"
+              style={{ color: 'var(--color-text-muted)', marginBottom: '16px' }}
+            >
+              {t('worksGreatFor')}
+            </p>
+            <div className="flex justify-center" style={{ gap: '16px' }}>
+              <GarmentPreview type="beanie" />
+              <GarmentPreview type="scarf" />
+              <GarmentPreview type="sweater" />
+            </div>
+          </div>
+
+          {/* CTA Button */}
+          <button
+            onClick={handleGetStarted}
+            className="btn-primary px-8 py-3 text-base font-semibold"
+            style={{
+              animation: 'pulse-subtle 2s ease-in-out infinite',
+            }}
+          >
+            {t('getStarted')}
+          </button>
+
+          <p
+            className="text-xs"
+            style={{ color: 'var(--color-text-muted)', marginTop: '16px' }}
+          >
+            {t('freeToUse')}
           </p>
-          <div className="flex justify-center gap-4">
-            <GarmentPreview type="beanie" />
-            <GarmentPreview type="scarf" />
-            <GarmentPreview type="sweater" />
+
+          {/* Trust badges */}
+          <div
+            className="flex justify-center flex-wrap"
+            style={{ opacity: 0.7, marginTop: '16px', gap: '16px' }}
+          >
+            <TrustBadge icon="lock" text={language === 'de' ? 'Kein Login' : 'No login required'} />
+            <TrustBadge icon="zap" text={language === 'de' ? 'Sofort-Ergebnis' : 'Instant results'} />
+            <TrustBadge icon="heart" text={language === 'de' ? '100% kostenlos' : '100% free'} />
           </div>
         </div>
-
-        {/* CTA Button */}
-        <button
-          onClick={handleGetStarted}
-          className="btn-primary px-10 py-4 text-lg font-semibold"
-          style={{
-            fontSize: '1.125rem',
-          }}
-        >
-          {t('getStarted')}
-        </button>
-
-        <p
-          className="mt-6 text-sm"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          {t('freeToUse')}
-        </p>
       </div>
+    </div>
+  );
+}
+
+function TestimonialChip({ text, stars }: { text: string; stars: number }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        padding: '4px 10px',
+        background: 'var(--color-background-secondary)',
+        borderRadius: '16px',
+        fontSize: '11px',
+        color: 'var(--color-text-secondary)',
+      }}
+    >
+      <span style={{ color: '#F59E0B', fontSize: '10px' }}>
+        {'★'.repeat(stars)}{'☆'.repeat(5 - stars)}
+      </span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function TrustBadge({ icon, text }: { icon: 'lock' | 'zap' | 'heart'; text: string }) {
+  const icons = {
+    lock: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0110 0v4" />
+      </svg>
+    ),
+    zap: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+    ),
+    heart: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+      </svg>
+    ),
+  };
+
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        fontSize: '11px',
+        color: 'var(--color-text-muted)',
+      }}
+    >
+      {icons[icon]}
+      <span>{text}</span>
     </div>
   );
 }
@@ -152,60 +323,63 @@ function StepCard({
   number,
   title,
   description,
-  icon,
 }: {
   number: number;
   title: string;
   description: string;
-  icon: React.ReactNode;
 }) {
   return (
     <div
       className="card"
       style={{
-        padding: '24px',
+        padding: '10px 12px',
         textAlign: 'left',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+      <div className="flex gap-2">
+        {/* Number badge - aligned to top */}
         <div
           style={{
-            width: '32px',
-            height: '32px',
+            width: '26px',
+            height: '26px',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '14px',
+            fontSize: '12px',
             fontWeight: 700,
+            flexShrink: 0,
+            marginTop: '1px',
             background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
             color: 'var(--color-button-text)',
-            flexShrink: 0,
           }}
         >
           {number}
         </div>
-        <div style={{ color: 'var(--color-accent)', width: '24px', height: '24px' }}>{icon}</div>
+        {/* Content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3
+            style={{
+              fontSize: '13px',
+              fontWeight: 600,
+              color: 'var(--color-text)',
+              marginBottom: '1px',
+              lineHeight: 1.3,
+            }}
+          >
+            {title}
+          </h3>
+          <p
+            style={{
+              fontSize: '11px',
+              color: 'var(--color-text-secondary)',
+              lineHeight: 1.4,
+            }}
+          >
+            {description}
+          </p>
+        </div>
       </div>
-      <h3
-        style={{
-          fontSize: '18px',
-          fontWeight: 600,
-          marginBottom: '8px',
-          color: 'var(--color-text)',
-          fontFamily: 'var(--font-heading)',
-        }}
-      >
-        {title}
-      </h3>
-      <p
-        style={{
-          fontSize: '14px',
-          color: 'var(--color-text-secondary)',
-        }}
-      >
-        {description}
-      </p>
     </div>
   );
 }
@@ -243,10 +417,10 @@ function GarmentPreview({ type }: { type: 'beanie' | 'scarf' | 'sweater' }) {
   return (
     <div
       style={{
-        width: '64px',
-        height: '64px',
-        padding: '12px',
-        borderRadius: '12px',
+        width: '40px',
+        height: '40px',
+        padding: '8px',
+        borderRadius: '8px',
         backgroundColor: 'var(--color-card)',
         border: '1px solid var(--color-card-border)',
         color: 'var(--color-accent)',

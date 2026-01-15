@@ -428,6 +428,52 @@ canvas,
   image-rendering: crisp-edges; /* Firefox */
 }
 
+/* Subtle pulse animation for CTA buttons */
+@keyframes pulse-subtle {
+  0%, 100% {
+    box-shadow: 0 4px 16px -4px rgba(146, 64, 14, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 24px -4px rgba(146, 64, 14, 0.5);
+  }
+}
+
+/* Confetti animation */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-100%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+/* Success checkmark animation */
+@keyframes scale-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes draw-check {
+  0% {
+    stroke-dashoffset: 50;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Print Styles */
 @media print {
   body {

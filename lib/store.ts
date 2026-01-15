@@ -116,7 +116,7 @@ export const useStore = create<AppState>((set) => ({
   selectedEditColor: null,
 
   setHasSeenWelcome: (seen) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
       localStorage.setItem('hasSeenWelcome', seen.toString());
     }
     set({ hasSeenWelcome: seen });

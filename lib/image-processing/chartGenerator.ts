@@ -514,6 +514,141 @@ export function generateStitchChart(
   };
 }
 
+// Generate stitch chart from already-quantized image data
+// This skips the quantization step since colors are already reduced
+function generateStitchChartFromQuantized(
+  imageData: ImageData,
+  palette: string[]
+): StitchChart {
+  const { width, height, data } = imageData;
+
+  // Map to yarn colors
+  const yarnColors = mapColorsToYarn(palette);
+
+  // Create grid
+  const grid: string[][] = [];
+
+  for (let y = 0; y < height; y++) {
+    const row: string[] = [];
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const hex = rgbToHex(r, g, b);
+      const colorIndex = palette.indexOf(hex);
+      row.push(yarnColors[colorIndex]?.id || yarnColors[0].id);
+    }
+    grid.push(row);
+  }
+
+  return {
+    width,
+    height,
+    grid,
+    colorMap: yarnColors,
+  };
+}
+
+// Resize already-quantized image data using weighted voting
+// Rare colors (like black eyes) get higher weight so they don't get wiped out by dominant colors
+function resizeQuantizedImageData(
+  imageData: ImageData,
+  targetWidth: number,
+  maxHeight?: number
+): ImageData {
+  const { width, height, data } = imageData;
+  const aspectRatio = height / width;
+  let newTargetWidth = targetWidth;
+  let targetHeight = Math.round(targetWidth * aspectRatio);
+
+  // If maxHeight is specified and calculated height exceeds it, constrain by height instead
+  if (maxHeight && targetHeight > maxHeight) {
+    targetHeight = maxHeight;
+    newTargetWidth = Math.round(targetHeight / aspectRatio);
+  }
+
+  // STEP 1: Count global color frequencies to determine rarity weights
+  const globalColorCounts = new Map<string, number>();
+  const totalPixels = width * height;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const key = `${data[i]},${data[i + 1]},${data[i + 2]}`;
+    globalColorCounts.set(key, (globalColorCounts.get(key) || 0) + 1);
+  }
+
+  // Calculate weight for each color: rarer colors get higher weight
+  // Weight = 1 / sqrt(frequency) - gives boost to rare colors without completely overriding common ones
+  const colorWeights = new Map<string, number>();
+  for (const [key, count] of globalColorCounts) {
+    const frequency = count / totalPixels;
+    // Rare colors (< 5% of image) get significant boost
+    // Very rare colors (< 1%) get even more boost
+    const weight = 1 / Math.sqrt(frequency);
+    colorWeights.set(key, weight);
+  }
+
+  const result = new ImageData(newTargetWidth, targetHeight);
+
+  // For each target pixel, find the color with highest weighted score in the block
+  const blockWidth = width / newTargetWidth;
+  const blockHeight = height / targetHeight;
+
+  for (let ty = 0; ty < targetHeight; ty++) {
+    for (let tx = 0; tx < newTargetWidth; tx++) {
+      // Calculate source block boundaries
+      const sx1 = Math.floor(tx * blockWidth);
+      const sy1 = Math.floor(ty * blockHeight);
+      const sx2 = Math.min(Math.ceil((tx + 1) * blockWidth), width);
+      const sy2 = Math.min(Math.ceil((ty + 1) * blockHeight), height);
+
+      // Count colors in this block
+      const colorCounts = new Map<string, { count: number; r: number; g: number; b: number }>();
+
+      for (let sy = sy1; sy < sy2; sy++) {
+        for (let sx = sx1; sx < sx2; sx++) {
+          const si = (sy * width + sx) * 4;
+          const r = data[si];
+          const g = data[si + 1];
+          const b = data[si + 2];
+          const key = `${r},${g},${b}`;
+
+          const existing = colorCounts.get(key);
+          if (existing) {
+            existing.count++;
+          } else {
+            colorCounts.set(key, { count: 1, r, g, b });
+          }
+        }
+      }
+
+      // Find color with highest WEIGHTED score
+      let maxScore = 0;
+      let bestColor = { r: 255, g: 255, b: 255 };
+
+      for (const [key, color] of colorCounts) {
+        const weight = colorWeights.get(key) || 1;
+        const score = color.count * weight;
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestColor = color;
+        }
+      }
+
+      // Set target pixel
+      const ti = (ty * newTargetWidth + tx) * 4;
+      result.data[ti] = bestColor.r;
+      result.data[ti + 1] = bestColor.g;
+      result.data[ti + 2] = bestColor.b;
+      result.data[ti + 3] = 255;
+    }
+  }
+
+  return result;
+}
+
 export async function imageFileToChart(
   file: File,
   targetWidth: number = 60,
@@ -536,11 +671,21 @@ export async function imageFileToChart(
           ctx.drawImage(img, 0, 0);
           const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
-          // Resize to target width (and constrain height if specified)
-          const resized = resizeImageData(imageData, targetWidth, maxHeight);
+          // STEP 1: Quantize at full resolution first (clean colors, no anti-aliasing artifacts)
+          const { pixels: quantizedPixels, palette } = quantizeColors(imageData, maxColors);
+          const quantizedImageData = new ImageData(
+            new Uint8ClampedArray(quantizedPixels),
+            img.width,
+            img.height
+          );
 
-          // Generate chart
-          const chart = generateStitchChart(resized, maxColors);
+          // STEP 2: Resize the already-quantized image using mode-based sampling
+          // This picks the most common color in each block, avoiding edge artifacts
+          const resized = resizeQuantizedImageData(quantizedImageData, targetWidth, maxHeight);
+
+          // STEP 3: Generate chart from the clean, resized data
+          // Pass the already-quantized palette to avoid re-quantizing
+          const chart = generateStitchChartFromQuantized(resized, palette);
 
           resolve(chart);
         } catch (error) {
@@ -576,11 +721,20 @@ export async function imageDataUrlToChart(
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
-        // Resize to target width (and constrain height if specified)
-        const resized = resizeImageData(imageData, targetWidth, maxHeight);
+        // STEP 1: Quantize at full resolution first (clean colors, no anti-aliasing artifacts)
+        const { pixels: quantizedPixels, palette } = quantizeColors(imageData, maxColors);
+        const quantizedImageData = new ImageData(
+          new Uint8ClampedArray(quantizedPixels),
+          img.width,
+          img.height
+        );
 
-        // Generate chart
-        const chart = generateStitchChart(resized, maxColors);
+        // STEP 2: Resize the already-quantized image using mode-based sampling
+        // This picks the most common color in each block, avoiding edge artifacts
+        const resized = resizeQuantizedImageData(quantizedImageData, targetWidth, maxHeight);
+
+        // STEP 3: Generate chart from the clean, resized data
+        const chart = generateStitchChartFromQuantized(resized, palette);
 
         resolve(chart);
       } catch (error) {

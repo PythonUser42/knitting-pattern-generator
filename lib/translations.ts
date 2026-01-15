@@ -131,8 +131,16 @@ export const translations = {
     en: 'Knitting Pattern Generator',
   },
   welcomeSubtitle: {
-    de: 'Verwandle jedes Bild in ein individuelles Strickmuster',
-    en: 'Turn any image into a custom knitting pattern',
+    de: 'Verwandle deine Lieblingsbilder in handgemachte Schätze',
+    en: 'Turn your favorite images into handmade treasures',
+  },
+  welcomeStory: {
+    de: 'Hast du schon mal ein süßes Design gesehen und gedacht „Das würde ich gerne stricken"? Jetzt kannst du es! Lade ein Bild hoch und wir verwandeln es in ein komplettes Strickmuster — mit Farbdiagramm, Garnbedarf und Schritt-für-Schritt-Anleitung.',
+    en: 'Ever spotted a cute design and thought "I wish I could knit that"? Now you can. Upload any image, and we\'ll transform it into a complete knitting pattern — with color charts, yarn requirements, and step-by-step instructions.',
+  },
+  welcomeTagline: {
+    de: 'Keine Mathematik. Kein Rätselraten. Einfach Garn wählen und losstricken.',
+    en: 'No math. No guesswork. Just pick your yarn and start stitching.',
   },
   step1Desc: {
     de: 'Wähle ein Bild mit 2-6 Farben. Einfache Designs funktionieren am besten!',

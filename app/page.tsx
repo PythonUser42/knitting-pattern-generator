@@ -8,6 +8,11 @@ import ChartVisualizer, { ChartVisualizerRef } from '@/components/ChartVisualize
 import CustomizationPanel from '@/components/CustomizationPanel';
 import WelcomeScreen from '@/components/WelcomeScreen';
 import LanguageButton from '@/components/LanguageButton';
+import ErrorMessage from '@/components/ErrorMessage';
+import DifficultyPreview from '@/components/DifficultyPreview';
+import Confetti from '@/components/Confetti';
+import ShareButtons from '@/components/ShareButtons';
+import WhatsNext from '@/components/WhatsNext';
 import { downloadPatternPDF } from '@/lib/pdf/patternPDF';
 import { imageFileToChart, imageDataUrlToChart } from '@/lib/image-processing/chartGenerator';
 import { generateBeaniePattern } from '@/lib/pattern-generation/beanieGenerator';
@@ -21,6 +26,8 @@ export default function Home() {
   const [step, setStep] = useState<'upload' | 'customize' | 'preview'>('upload');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [downloadComplete, setDownloadComplete] = useState(false);
   const chartVisualizerRef = useRef<ChartVisualizerRef>(null);
 
   const {
@@ -195,6 +202,8 @@ export default function Home() {
 
       setPattern(generatedPattern);
       setStep('preview');
+      setShowConfetti(true);
+      setDownloadComplete(false);
     } catch (err) {
       setError(t('failedToGeneratePattern'));
       console.error(err);
@@ -215,12 +224,20 @@ export default function Home() {
     try {
       const canvas = chartVisualizerRef.current?.getCanvas();
       await downloadPatternPDF(pattern, canvas || undefined, language);
+      setDownloadComplete(true);
     } catch (err) {
       setError(t('failedToGeneratePDF'));
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStartNew = () => {
+    reset();
+    setStep('upload');
+    setDownloadComplete(false);
+    setShowConfetti(false);
   };
 
   // Show welcome screen for new users
@@ -348,10 +365,17 @@ export default function Home() {
 
         {/* Error Display */}
         {error && (
-          <div className="max-w-2xl mx-auto mb-6 error-message">
-            {error}
+          <div className="max-w-2xl mx-auto">
+            <ErrorMessage
+              message={error}
+              onDismiss={() => setError(null)}
+              onRetry={step === 'upload' ? handleProcessImage : step === 'customize' ? handleGeneratePattern : handleDownloadPDF}
+            />
           </div>
         )}
+
+        {/* Confetti Celebration */}
+        <Confetti active={showConfetti} />
 
         {/* Step 1: Upload */}
         {step === 'upload' && (
@@ -389,6 +413,7 @@ export default function Home() {
               {/* Customization Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <CustomizationPanel />
+                <DifficultyPreview />
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <button
                     onClick={() => setStep('upload')}
@@ -444,20 +469,33 @@ export default function Home() {
                 padding: '32px 24px',
               }}
             >
-              {/* Checkmark */}
+              {/* Animated Checkmark */}
               <div
                 style={{
-                  width: '48px',
-                  height: '48px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '50%',
                   background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 16px',
+                  animation: 'scale-in 0.5s ease-out',
+                  boxShadow: '0 4px 20px rgba(146, 64, 14, 0.3)',
                 }}
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="3"
+                  style={{
+                    strokeDasharray: 50,
+                    animation: 'draw-check 0.5s ease-out 0.3s forwards',
+                  }}
+                >
                   <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
@@ -575,6 +613,19 @@ export default function Home() {
             >
               {t('backToSettings')}
             </button>
+
+            {/* Share Buttons */}
+            <ShareButtons
+              patternName={pattern.garmentType === 'beanie' ? t('beanie') : pattern.garmentType === 'scarf' ? t('scarf') : t('sweater')}
+            />
+
+            {/* What's Next - shown after download */}
+            {downloadComplete && (
+              <WhatsNext
+                garmentType={pattern.garmentType}
+                onStartNew={handleStartNew}
+              />
+            )}
           </div>
         )}
 
